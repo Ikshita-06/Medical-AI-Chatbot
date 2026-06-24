@@ -4,6 +4,7 @@ from pymilvus import MilvusClient
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
+# Load hidden passwords from the .env file
 load_dotenv()
 
 def get_postgres_connection():
@@ -24,6 +25,7 @@ def get_postgres_connection():
 def get_milvus_client():
     """Connects to a lightweight, local Milvus file for vector storage."""
     try:
+        # Milvus Lite creates this file automatically right inside your VS Code folder!
         client = MilvusClient("milvus_medical_demo.db")
         return client
     except Exception as e:
@@ -36,14 +38,28 @@ def get_embedding_model():
     model = SentenceTransformer('intfloat/e5-small-v2')
     return model
 
-
-# --- QUICK TEST TO SEE IF POSTGRES IS CONNECTED ---
+# --- TEST BLOCK: PRINT 5 ROWS ---
 if __name__ == "__main__":
-    print("Testing PostgreSQL connection...")
-    test_conn = get_postgres_connection()
+    print("Testing PostgreSQL connection and fetching data...")
+    conn = get_postgres_connection()
     
-    if test_conn:
-        print("SUCCESS! Python script is successfully connected to database.")
-        test_conn.close() 
+    if not conn:
+        print("Failed to connect.")
     else:
-        print("FAILED.")
+        cursor = conn.cursor()
+        try:
+            # IMPORTANT: Change 'YOUR_TABLE_NAME' to your actual MedQuad table name!
+            cursor.execute("SELECT * FROM medical LIMIT 5")
+            rows = cursor.fetchall()
+            
+            print("\n✅ SUCCESS! Here are your first 5 rows:\n")
+            for index, row in enumerate(rows):
+                print(f"--- ROW {index + 1} ---")
+                print(row)
+                print("\n")
+                
+        except Exception as e:
+            print(f"❌ Error reading data: {e}")
+        finally:
+            cursor.close()
+            conn.close()

@@ -1,4 +1,3 @@
-# State.py
 from core import get_postgres_connection
 
 def save_message(message):
@@ -22,7 +21,6 @@ def save_message(message):
         """
         cursor.execute(delete_query)
         
-        # Save the changes!
         conn.commit() 
     except Exception as e:
         print(f"Error saving to memory: {e}")
