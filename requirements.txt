@@ -1,0 +1,10 @@
+# Database Connectors & Caching
+psycopg2-binary==2.9.9       # To pull your raw FAQ and medical data from PostgreSQL
+pymilvus==2.3.6              # To connect to Milvus and store/search vector embeddings
+redis==5.0.1                 # To manage state and the sliding window memory
+
+# Local AI & Embeddings
+sentence-transformers==2.5.1 # To run the E5 embedding model locally inside your Python script
+
+# Environment & Utilities
+python-dotenv==1.0.1         # To securely load your local database URLs
