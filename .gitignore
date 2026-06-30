@@ -1,3 +1,13 @@
+# Virtual Environment
+venv/
+
+# Python Cache
 __pycache__/
-.env
 *.pyc
+
+# Environment Variables
+.env
+
+# Local Database Files
+milvus_data/
+milvus_medical_demo.db

@@ -5,6 +5,7 @@ pymilvus==2.3.6
 # Local AI & Embeddings
 sentence-transformers==2.5.1 
 
+
 # Environment & Utilities
 python-dotenv==1.0.1         
 
