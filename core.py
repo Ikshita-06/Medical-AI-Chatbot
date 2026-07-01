@@ -1,7 +1,11 @@
 import os
+# Force the AI model to use the forgiving Python engine to avoid protobuf errors
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 import psycopg2
 from dotenv import load_dotenv
 
+# Load environment variables (keeps your passwords safe)
 load_dotenv()
 
 def get_postgres_connection():
@@ -23,41 +27,14 @@ def get_milvus_client():
     """
     Initializes and returns a connection to the local Milvus Lite vector database.
     """
-    # Lazy import to avoid importing pymilvus at module import time
     try:
         from pymilvus import MilvusClient
-    except Exception as e:
-        print(f"Milvus client import error: {e}")
-        return None
-
-    # Try several common local URIs used by Milvus / milvus-lite installations.
-    candidate_uris = [
-        "http://127.0.0.1:19121",
-        "http://localhost:19121",
-        "http://127.0.0.1:19530",
-        "http://localhost:19530",
-    ]
-
-    last_exc = None
-    for uri in candidate_uris:
-        try:
-            client = MilvusClient(uri=uri)
-            return client
-        except Exception as e:
-            last_exc = e
-
-    # Try without an explicit URI (allow env/config to take effect)
-    try:
-        client = MilvusClient()
+        # This is the magic line. It forces the router to look at the local file we built!
+        client = MilvusClient(uri="./milvus_medical_demo.db")
         return client
     except Exception as e:
-        last_exc = e
-
-    print(f"Milvus client initialization error: {last_exc}")
-    print("Hint: ensure Milvus or milvus-lite is running and reachable at localhost.\n"
-          "If using milvus-lite, install the extra with: pip install 'pymilvus[milvus_lite]'\n"
-          "and start the milvus-lite service before running this script.")
-    return None
+        print(f"Milvus client initialization error: {e}")
+        return None
 
 def get_embedding_model():
     """Loads the free, local E5 model to turn text into numbers."""
@@ -76,13 +53,21 @@ def get_embedding_model():
         return None
 
 
-# --- QUICK TEST TO SEE IF POSTGRES IS CONNECTED ---
+# --- QUICK TEST BLOCK ---
 if __name__ == "__main__":
     print("Testing PostgreSQL connection...")
     test_conn = get_postgres_connection()
     
     if test_conn:
-        print("SUCCESS! Python script is successfully connected to database.")
+        print("✅ SUCCESS! Connected to PostgreSQL database.")
         test_conn.close() 
     else:
-        print("FAILED.")
+        print("❌ FAILED to connect to PostgreSQL.")
+        
+    print("\nTesting Milvus connection...")
+    test_milvus = get_milvus_client()
+    
+    if test_milvus:
+        print("✅ SUCCESS! Connected to Milvus local database.")
+    else:
+        print("❌ FAILED to connect to Milvus.")
