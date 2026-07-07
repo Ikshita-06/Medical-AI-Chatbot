@@ -1,0 +1,176 @@
+# faq.py
+import os
+import re
+from textblob import TextBlob
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+from core import get_postgres_connection, get_milvus_client, get_embedding_model
+from state import get_current_memory
+
+COLLECTION_NAME = "medical_faq"
+
+print("Initializing FAQ Agent Brain... (Please wait)")
+milvus_client = get_milvus_client()
+model = get_embedding_model()
+
+if milvus_client:
+    milvus_client.load_collection(collection_name=COLLECTION_NAME)
+
+def clean_and_summarize(raw_text, max_sentences=3):
+    if not raw_text: return raw_text
+    clean_text = re.sub(r'\(.*?video.*?\)', '', raw_text, flags=re.IGNORECASE)
+    clean_text = clean_text.replace("Key Points", "")
+    clean_text = re.sub(r'button on your keyboard.*?\)', '', clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    sentences = re.split(r'(?<=[.!?]) +', clean_text)
+    return " ".join(sentences[:max_sentences]).strip()
+
+# 🧠 THE INTENT TRANSLATOR
+INTENT_SYNONYMS = {
+    "symptoms": ["how to identify", "signs", "how to tell", "identifications", "how to know if"],
+    "causes": ["why does it happen", "reason for", "what brings it on", "how do you get"],
+    "treatment": ["how to cure", "how to fix", "remedy", "how to manage"],
+    "precautions": ["how to prevent", "safety", "avoid", "precaution"]
+}
+
+def normalize_vocabulary(query):
+    query_lower = query.lower()
+    for standard_term, synonyms in INTENT_SYNONYMS.items():
+        if any(syn in query_lower for syn in synonyms):
+            return standard_term
+    return query
+
+def resolve_context(current_query):
+    """🧠 THE SLIDING MEMORY DETECTIVE"""
+    history = get_current_memory()
+    
+    clean_current = re.sub(r'[^\w\s]', '', current_query.lower()).strip()
+    words = clean_current.split()
+    
+    follow_up_keywords = {
+        "cause", "causes", "symptom", "symptoms", "treat", "treatment", "treated",
+        "precaution", "precautions", "prevent", "prevention", "cure", "curable",
+        "medicine", "medication", "risk", "risks", "identify", "identifications",
+        "genetic", "diagnose", "diagnosis"
+    }
+    
+    stop_words = {
+        "then", "how", "to", "what", "are", "the", "is", "can", "be", "do", 
+        "you", "tell", "me", "about", "it", "this", "for", "a", "an", "of", 
+        "does", "has", "have", "i", "my", "any", "there", "in", "on", "if"
+    }
+    
+    # Isolate only the important words
+    core_words = [w for w in words if w not in stop_words]
+    
+    is_follow_up = False
+    if " it" in clean_current or " this" in clean_current or clean_current in ["it", "this"]:
+        is_follow_up = True
+    # 🚀 THE FIX: If ALL remaining words are follow-up keywords, it is 100% a follow-up. 
+    # (e.g. "then how to treat" -> ["treat"] -> True)
+    elif len(core_words) > 0 and all(w in follow_up_keywords for w in core_words):
+        is_follow_up = True
+        
+    if not is_follow_up:
+        # If it's a short query (just disease name like "low vision"), auto-format it
+        if len(core_words) <= 2 and "what" not in clean_current:
+            return f"what is {current_query}"
+        return current_query
+        
+    # If it is a follow-up, dig backward to find the Anchor
+    if not history:
+        return current_query
+        
+    anchor = ""
+    for chat in reversed(history):
+        if " | Bot: " not in chat: continue
+        
+        past_user_q = chat.split(" | Bot: ")[0].replace("User: ", "").strip()
+        clean_past = re.sub(r'[^\w\s]', '', past_user_q.lower()).strip()
+        past_words = clean_past.split()
+        
+        past_core_words = [w for w in past_words if w not in stop_words]
+        
+        past_is_follow_up = False
+        if " it" in clean_past or " this" in clean_past or clean_past in ["it", "this"]:
+            past_is_follow_up = True
+        elif len(past_core_words) > 0 and all(w in follow_up_keywords for w in past_core_words):
+            past_is_follow_up = True
+            
+        if not past_is_follow_up:
+            anchor = past_user_q
+            break
+            
+    if anchor:
+        # 🚀 THE FIX: Aggressively strip "can you tell me about", "what is", etc. from the anchor
+        prefixes = r'^(can you tell me about|what do you know about|tell me about|what is|what are|explain|describe|define|is|can|do|does)\s+'
+        clean_anchor = re.sub(prefixes, '', anchor.lower()).strip()
+        clean_anchor = re.sub(r'[^\w\s]', '', clean_anchor).strip()
+        
+        clean_intent = normalize_vocabulary(current_query)
+        clean_intent = re.sub(r'[^\w\s]', '', clean_intent).strip()
+        
+        final_query = f"{clean_intent} of {clean_anchor}"
+        print(f"   [DEBUG] 🧠 Formatted Search Query: '{final_query}'")
+        return final_query
+        
+    return current_query
+
+def search_postgres(query):
+    conn = get_postgres_connection()
+    if not conn: return None
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT answer FROM medical WHERE LOWER(question)=LOWER(%s) LIMIT 1", (query,))
+        row = cursor.fetchone()
+        if row: return row[0]
+        
+        cursor.execute("SELECT answer FROM medical WHERE question ILIKE %s LIMIT 1", (f"{query}%",))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    except: return None
+    finally:
+        cursor.close()
+        conn.close()
+
+def search_milvus(query):
+    if not milvus_client or not model: return "Milvus connection failed."
+    text_to_embed = f"query: {query}"
+    try:
+        query_embedding = model.encode(text_to_embed).tolist()
+        results = milvus_client.search(
+            collection_name=COLLECTION_NAME,
+            data=[query_embedding],
+            limit=1,
+            output_fields=["question", "answer"],
+        )
+        if results and len(results[0]) > 0:
+            hit = results[0][0]
+            distance = hit.get("distance", 0)
+            
+            if distance > 0.25:
+                return "I couldn't find a confident match for that. Please check for typos and try asking again."
+            return hit["entity"]["answer"]
+        return "Sorry, I could not find any relevant medical information."
+    except: return "Error searching medical database."
+
+def process_faq(user_query):
+    clean_for_spell = re.sub(r'[^\w\s\?]', '', user_query)
+    corrected_query = str(TextBlob(clean_for_spell).correct())
+
+    # Replace slang like "how to identify" -> "symptoms" FIRST
+    normalized_query = normalize_vocabulary(corrected_query)
+    
+    # Get the mathematically perfect context string
+    smart_query = resolve_context(normalized_query)
+
+    raw_answer = search_postgres(smart_query)
+    if not raw_answer:
+        raw_answer = search_milvus(smart_query)
+
+    error_flags = ["confident match", "Sorry", "Error searching", "Milvus connection failed"]
+    if not any(flag in raw_answer for flag in error_flags):
+        final_answer = clean_and_summarize(raw_answer)
+        return corrected_query, final_answer
+    else:
+        return corrected_query, raw_answer

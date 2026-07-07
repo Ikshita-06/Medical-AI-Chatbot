@@ -11,3 +11,5 @@ __pycache__/
 # Local Database Files
 milvus_data/
 milvus_medical_demo.db
+
+ingest_test.py
