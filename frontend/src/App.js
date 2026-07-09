@@ -1,3 +1,4 @@
+// App.js
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 
@@ -9,6 +10,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Auto-scroll to bottom when a new message arrives
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -43,10 +45,17 @@ function App() {
   return (
     <div style={styles.container}>
       <div style={styles.chatBox}>
-        <div style={styles.header}>
-          <h2>🏥 Medical AI Assistant</h2>
-        </div>
         
+        {/* === THE NEW HEADER WITH SVG LOGO === */}
+        <div style={styles.header}>
+          <svg width="35" height="35" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '10px' }}>
+            <path d="M12 2C6.477 2 2 6.03 2 11C2 13.79 3.447 16.29 5.803 17.89C5.553 19.34 4.54 21.05 4.463 21.18C4.331 21.39 4.35 21.66 4.511 21.84C4.672 22.02 4.939 22.07 5.155 21.96C6.732 21.17 8.093 19.96 8.948 19.46C9.92 19.81 10.942 20 12 20C17.523 20 22 15.97 22 11C22 6.03 17.523 2 12 2Z" fill="white"/>
+            <path d="M13 7H11V10H8V12H11V15H13V12H16V10H13V7Z" fill="#0056b3"/>
+          </svg>
+          <h2 style={{ margin: 0 }}>Medical AI Assistant</h2>
+        </div>
+        {/* ================================== */}
+
         <div style={styles.messageArea}>
           {messages.map((msg, index) => (
             <div key={index} style={msg.sender === 'user' ? styles.userMessageWrapper : styles.botMessageWrapper}>
@@ -80,11 +89,14 @@ function App() {
   );
 }
 
-// Built-in CSS so you don't have to mess with external files tonight
+// === THIS IS WHERE THE HEADER STYLE WAS CHANGED ===
 const styles = {
   container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' },
   chatBox: { width: '450px', height: '650px', backgroundColor: 'white', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  header: { backgroundColor: '#0056b3', color: 'white', padding: '15px', textAlign: 'center', margin: '0' },
+  
+  // Notice the display: 'flex', alignItems: 'center' added here so the logo and text sit perfectly inline!
+  header: { backgroundColor: '#0056b3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0' },
+  
   messageArea: { flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#fafafa' },
   userMessageWrapper: { display: 'flex', justifyContent: 'flex-end' },
   botMessageWrapper: { display: 'flex', justifyContent: 'flex-start' },
