@@ -126,3 +126,8 @@ UNSAFE_WORDS = {
     "abuse", "stupid", "idiot", "fake", "dumb", "useless", 
     "hate", "shut up", "fuck", "shit", "bitch", "asshole"
 }
+
+OFF_TOPIC = {
+    "joke", "jokes", "funny", "ignore", "instructions", "prompt", 
+    "poem", "story", "sing", "dance", "weather", "politics", "movie"
+}

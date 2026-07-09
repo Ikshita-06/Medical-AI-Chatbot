@@ -1,5 +1,5 @@
 import re
-from vocab import GREETINGS, GRATITUDE, UNSAFE_WORDS
+from vocab import GREETINGS, GRATITUDE, UNSAFE_WORDS,OFF_TOPIC
 
 def is_safe_input(query):
     query_lower = query.lower()
@@ -11,7 +11,9 @@ def handle_small_talk(query):
     clean_q = re.sub(r'[^\w\s]', '', query.lower()).strip()
     words = clean_q.split()
     if not words: return None
-    
+    # Check for prompt injections and jokes
+    if any(word in clean_q for word in OFF_TOPIC):
+        return "I am a strictly medical AI Assistant. I cannot tell jokes, write stories, or ignore my instructions."
     # If the exact phrase or the first word is a greeting
     if clean_q in GREETINGS or words[0] in GREETINGS:
         return "Hello! I am your Medical AI Assistant. How can I help you today?"
