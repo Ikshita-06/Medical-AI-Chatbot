@@ -1,4 +1,3 @@
-# router.py
 from state import save_message
 from welcome import process_welcome
 from faq import process_faq

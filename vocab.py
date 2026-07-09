@@ -1,5 +1,3 @@
-# vocab.py
-
 # ==========================================
 # 1. THE FOLLOW-UP TRIGGERS
 # ==========================================
@@ -102,14 +100,14 @@ STOP_WORDS = {
     "tell", "show", "give", "know", "about", "like", "just", "please", 
     "kindly", "help", "info", "information", "meant", "mean", "get", "got", 
     "getting", "make", "made", "making", "think", "thought", "see", "saw", "look",
-    "any", "some", "all", "every", "each", "one", "two", "three", "first", "second"
+    "any", "some", "all", "every", "each", "one", "two", "three", "first", "second",
+    "pls","plz","please"
 }
 
 
 # ==========================================
 # 4. SMALL TALK & GREETINGS
 # ==========================================
-# Expanded to catch regional greetings, slang, typos, and conversational gratitude.
 GREETINGS = {
     "hi", "hello", "hey", "hii", "heyo", "greetings", "good morning", 
     "good afternoon", "good evening", "sup", "yo", "namaste", "hiya", "howdy",
@@ -120,10 +118,16 @@ GRATITUDE = {
     "thanks", "thank you", "thx", "tysm", "thanks a lot", "appreciate it", 
     "thankyou", "awesome", "great", "helpful", "good job", "cheers", 
     "perfect", "much appreciated", "thanks bro", "thank u", "ty", "you rock",
-    "thanks so much", "very helpful"
+    "thanks so much", "very helpful","ok", "okay", "alright", "got it", "understood",
+    "makes sense", "cool", "fine"
 }
 
 UNSAFE_WORDS = {
     "abuse", "stupid", "idiot", "fake", "dumb", "useless", 
     "hate", "shut up", "fuck", "shit", "bitch", "asshole"
+}
+
+OFF_TOPIC = {
+    "joke", "jokes", "funny", "ignore", "instructions", "prompt", 
+    "poem", "story", "sing", "dance", "weather", "politics", "movie"
 }

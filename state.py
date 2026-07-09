@@ -1,8 +1,3 @@
-# state.py
-
-# ==========================================
-# 🧠 THE STATE MANAGER
-# ==========================================
 # In-memory storage for sliding window history and strict medical topic tracking.
 
 _chat_history = []
