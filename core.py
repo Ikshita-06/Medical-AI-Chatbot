@@ -1,5 +1,4 @@
 import os
-# Force the AI model to use the forgiving Python engine to avoid protobuf errors
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import psycopg2
@@ -29,7 +28,6 @@ def get_milvus_client():
     """
     try:
         from pymilvus import MilvusClient
-        # This is the magic line. It forces the router to look at the local file we built!
         client = MilvusClient(uri="./milvus_medical_demo.db")
         return client
     except Exception as e:

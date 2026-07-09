@@ -1,4 +1,3 @@
-# welcome.py
 import re
 from vocab import GREETINGS, GRATITUDE, UNSAFE_WORDS
 

@@ -1,4 +1,3 @@
-# faq.py
 import os
 import re
 from textblob import TextBlob
@@ -6,6 +5,8 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from core import get_postgres_connection, get_milvus_client, get_embedding_model
 from state import get_current_memory
+
+from vocab import INTENT_SYNONYMS, FOLLOW_UP_KEYWORDS, STOP_WORDS
 
 COLLECTION_NAME = "medical_faq"
 
@@ -25,14 +26,6 @@ def clean_and_summarize(raw_text, max_sentences=3):
     sentences = re.split(r'(?<=[.!?]) +', clean_text)
     return " ".join(sentences[:max_sentences]).strip()
 
-# 🧠 THE INTENT TRANSLATOR
-INTENT_SYNONYMS = {
-    "symptoms": ["how to identify", "signs", "how to tell", "identifications", "how to know if"],
-    "causes": ["why does it happen", "reason for", "what brings it on", "how do you get"],
-    "treatment": ["how to cure", "how to fix", "remedy", "how to manage"],
-    "precautions": ["how to prevent", "safety", "avoid", "precaution"]
-}
-
 def normalize_vocabulary(query):
     query_lower = query.lower()
     for standard_term, synonyms in INTENT_SYNONYMS.items():
@@ -47,37 +40,19 @@ def resolve_context(current_query):
     clean_current = re.sub(r'[^\w\s]', '', current_query.lower()).strip()
     words = clean_current.split()
     
-    follow_up_keywords = {
-        "cause", "causes", "symptom", "symptoms", "treat", "treatment", "treated",
-        "precaution", "precautions", "prevent", "prevention", "cure", "curable",
-        "medicine", "medication", "risk", "risks", "identify", "identifications",
-        "genetic", "diagnose", "diagnosis"
-    }
-    
-    stop_words = {
-        "then", "how", "to", "what", "are", "the", "is", "can", "be", "do", 
-        "you", "tell", "me", "about", "it", "this", "for", "a", "an", "of", 
-        "does", "has", "have", "i", "my", "any", "there", "in", "on", "if"
-    }
-    
-    # Isolate only the important words
-    core_words = [w for w in words if w not in stop_words]
+    core_words = [w for w in words if w not in STOP_WORDS]
     
     is_follow_up = False
     if " it" in clean_current or " this" in clean_current or clean_current in ["it", "this"]:
         is_follow_up = True
-    # 🚀 THE FIX: If ALL remaining words are follow-up keywords, it is 100% a follow-up. 
-    # (e.g. "then how to treat" -> ["treat"] -> True)
-    elif len(core_words) > 0 and all(w in follow_up_keywords for w in core_words):
+    elif len(core_words) > 0 and all(w in FOLLOW_UP_KEYWORDS for w in core_words):
         is_follow_up = True
         
     if not is_follow_up:
-        # If it's a short query (just disease name like "low vision"), auto-format it
         if len(core_words) <= 2 and "what" not in clean_current:
             return f"what is {current_query}"
         return current_query
         
-    # If it is a follow-up, dig backward to find the Anchor
     if not history:
         return current_query
         
@@ -89,12 +64,12 @@ def resolve_context(current_query):
         clean_past = re.sub(r'[^\w\s]', '', past_user_q.lower()).strip()
         past_words = clean_past.split()
         
-        past_core_words = [w for w in past_words if w not in stop_words]
+        past_core_words = [w for w in past_words if w not in STOP_WORDS]
         
         past_is_follow_up = False
         if " it" in clean_past or " this" in clean_past or clean_past in ["it", "this"]:
             past_is_follow_up = True
-        elif len(past_core_words) > 0 and all(w in follow_up_keywords for w in past_core_words):
+        elif len(past_core_words) > 0 and all(w in FOLLOW_UP_KEYWORDS for w in past_core_words):
             past_is_follow_up = True
             
         if not past_is_follow_up:
@@ -102,8 +77,7 @@ def resolve_context(current_query):
             break
             
     if anchor:
-        # 🚀 THE FIX: Aggressively strip "can you tell me about", "what is", etc. from the anchor
-        prefixes = r'^(can you tell me about|what do you know about|tell me about|what is|what are|explain|describe|define|is|can|do|does)\s+'
+        prefixes = r'^(can you tell me about|can u tell me about|can u brief me about|brief me about|what do you know about|tell me about|what is|what are|explain|describe|define|is|can|do|does)\s+'
         clean_anchor = re.sub(prefixes, '', anchor.lower()).strip()
         clean_anchor = re.sub(r'[^\w\s]', '', clean_anchor).strip()
         
@@ -158,10 +132,7 @@ def process_faq(user_query):
     clean_for_spell = re.sub(r'[^\w\s\?]', '', user_query)
     corrected_query = str(TextBlob(clean_for_spell).correct())
 
-    # Replace slang like "how to identify" -> "symptoms" FIRST
     normalized_query = normalize_vocabulary(corrected_query)
-    
-    # Get the mathematically perfect context string
     smart_query = resolve_context(normalized_query)
 
     raw_answer = search_postgres(smart_query)

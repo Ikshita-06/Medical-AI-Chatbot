@@ -1,11 +1,8 @@
 import os
-# Ensure the pure-Python protobuf implementation is used before any imports that
-# may load compiled protobufs (fixes MessageFactory.GetPrototype errors).
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from core import get_postgres_connection, get_milvus_client, get_embedding_model
 
-# ... (leave all your functions below this exactly the same)
 def migrate_data():
     print("Initializing connections (Loading AI model may take a moment)...")
     pg_conn = get_postgres_connection()
