@@ -132,8 +132,8 @@ def process_faq(user_query):
     clean_for_spell = re.sub(r'[^\w\s\?]', '', user_query)
     corrected_query = str(TextBlob(clean_for_spell).correct())
 
-    normalized_query = normalize_vocabulary(corrected_query)
-    smart_query = resolve_context(normalized_query)
+    # DIRECTLY pass to context, bypassing the aggressive destroyer
+    smart_query = resolve_context(corrected_query)
 
     raw_answer = search_postgres(smart_query)
     if not raw_answer:
