@@ -1,5 +1,6 @@
 import re
 import time
+from vocab import UNSAFE_WORDS
 
 # Maximum abusive attempts
 MAX_WARNINGS = 5
@@ -13,26 +14,10 @@ user_state = {
     "blocked_until": 0
 }
 
-# List of abusive words
-ABUSIVE_WORDS = {
-    "fuck",
-    "shit",
-    "idiot",
-    "stupid",
-    "asshole",
-    "bitch",
-    "bastard",
-    "bc",
-    "mc",
-    "madarchod",
-    "bhosdike",
-    "chutiya"
-}
-
 
 def contains_abuse(text):
     words = re.findall(r"\b\w+\b", text.lower())
-    return any(word in ABUSIVE_WORDS for word in words)
+    return any(word in UNSAFE_WORDS for word in words)
 
 
 def check_abuse(message):
@@ -62,23 +47,22 @@ def check_abuse(message):
 
             print("\n⛔ Chat terminated because of repeated abusive language.\n")
 
-    # Reset warnings
+            # Reset warnings
             user_state["warnings"] = 0
 
-    # Live countdown
+            # Live countdown
             for remaining in range(BLOCK_TIME, 0, -1):
-                 print(f"\r⏳ Wait for {remaining} seconds...", end="", flush=True)
-                 time.sleep(1) 
+                print(f"\r⏳ Wait for {remaining} seconds...", end="", flush=True)
+                time.sleep(1)
 
             print("\n\n✅ Chat started again.\n")
 
         return {
-           "allowed": False,
+            "allowed": False,
             "blocked": False,
             "message": f"⚠️ Please use appropriate language.\nOnly {remaining_warnings} warning(s) remaining.",
             "block_time": 0
-             }
-    
+        }
 
         return {
             "allowed": False,
