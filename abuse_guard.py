@@ -36,6 +36,7 @@ def check_abuse(message):
             "block_time": remaining
         }
 
+    
     # If abusive word found
     if contains_abuse(message):
 
@@ -43,33 +44,31 @@ def check_abuse(message):
 
         remaining_warnings = MAX_WARNINGS - user_state["warnings"]
 
+    # 5th warning -> Block chat
         if user_state["warnings"] >= MAX_WARNINGS:
 
-            print("\n⛔ Chat terminated because of repeated abusive language.\n")
-
-            # Reset warnings
+            user_state["blocked_until"] = current_time + BLOCK_TIME
             user_state["warnings"] = 0
 
-            # Live countdown
-            for remaining in range(BLOCK_TIME, 0, -1):
-                print(f"\r⏳ Wait for {remaining} seconds...", end="", flush=True)
-                time.sleep(1)
+            return {
+              "allowed": False,
+              "blocked": True,
+              "message": f"⛔ Chat terminated due to repeated abusive language.\nPlease wait {BLOCK_TIME} seconds.",
+              "block_time": BLOCK_TIME
+           }
 
-            print("\n\n✅ Chat started again.\n")
-
-        return {
-            "allowed": False,
-            "blocked": False,
-            "message": f"⚠️ Please use appropriate language.\nOnly {remaining_warnings} warning(s) remaining.",
+    # 1st to 4th warning
+        return  {
+           "allowed": False,
+           "blocked": False,
+            "message": (
+               f"⚠️ Please use appropriate language.\n"
+               f"You have {remaining_warnings} warning(s) remaining.\n"
+               f"After {remaining_warnings} more abusive message(s), "
+               f"your chat will be terminated for {BLOCK_TIME} seconds."
+            ),
             "block_time": 0
-        }
-
-        return {
-            "allowed": False,
-            "blocked": False,
-            "message": f"⚠ Please use appropriate language.\nOnly {remaining_warnings} warning(s) remaining.",
-            "block_time": 0
-        }
+       }
 
     return {
         "allowed": True,
