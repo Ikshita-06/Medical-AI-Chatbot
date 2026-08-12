@@ -1,58 +1,32 @@
-from core import get_postgres_connection
+# In-memory storage for sliding window history and strict medical topic tracking.
 
-def save_message(message):
-    """Saves a message to PostgreSQL and enforces the sliding window of 3."""
-    conn = get_postgres_connection()
-    if not conn:
-        print("Could not connect to database to save memory.")
-        return
+_chat_history = []
+_current_topic = None
 
-    cursor = conn.cursor()
-    try:
-        # 1. Save the new message to the database
-        cursor.execute("INSERT INTO chat_history (message) VALUES (%s)", (message,))
-        
-        # 2. THE SLIDING WINDOW: Keep only the 3 newest messages.
-        delete_query = """
-        DELETE FROM chat_history 
-        WHERE id NOT IN (
-            SELECT id FROM chat_history ORDER BY id DESC LIMIT 3
-        )
-        """
-        cursor.execute(delete_query)
-        
-        conn.commit() 
-    except Exception as e:
-        print(f"Error saving to memory: {e}")
-    finally:
-        cursor.close()
-        conn.close()
+def get_current_topic():
+    """Returns the isolated, currently active medical topic (e.g., 'lung cancer')."""
+    return _current_topic
+
+def set_current_topic(topic):
+    """Sets the isolated medical topic when a new disease is detected."""
+    global _current_topic
+    _current_topic = topic
 
 def get_current_memory():
-    """Retrieves the recent chat history from PostgreSQL."""
-    conn = get_postgres_connection()
-    if not conn:
-        return []
-        
-    cursor = conn.cursor()
-    try:
-        # Get the 3 most recent messages, ordered from oldest to newest so they read like a normal chat log
-        cursor.execute("""
-            SELECT message FROM (
-                SELECT id, message FROM chat_history ORDER BY id DESC LIMIT 3
-            ) AS recent_messages 
-            ORDER BY id ASC
-        """)
-        
-        rows = cursor.fetchall()
-        
-        # Pull just the text out of the database rows and put it in a standard Python list
-        chat_list = [row[0] for row in rows]
-        return chat_list
-        
-    except Exception as e:
-        print(f"Error fetching memory: {e}")
-        return []
-    finally:
-        cursor.close()
-        conn.close()
+    """Returns the sliding window chat history."""
+    return _chat_history
+
+def save_message(message_string):
+    """Saves a formatted conversation string and maintains a rolling window of 3."""
+    global _chat_history
+    _chat_history.append(message_string)
+    
+    # Enforce Sliding Window (Last 3 interactions)
+    if len(_chat_history) > 3:
+        _chat_history.pop(0)
+
+def clear_memory():
+    """Wipes the session memory and topic state."""
+    global _chat_history, _current_topic
+    _chat_history = []
+    _current_topic = None

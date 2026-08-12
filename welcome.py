@@ -1,37 +1,35 @@
-def get_welcome_message():
-    """
-    Returns the standardized greeting and capability disclaimer for the assistant.
-    """
-    return (
-        "Hello. I am your Semantic Medical Assistant. "
-        "I provide information using verified, doctor-approved data "
-        "from the MedQuad database. Please enter your medical query."
-    )
+import re
+from vocab import GREETINGS, GRATITUDE, UNSAFE_WORDS,OFF_TOPIC
 
-def is_safe_input(user_input):
-    """
-    Validates user input against predefined guardrails to ensure relevance and system security.
-    Returns a tuple containing a boolean validation flag and the corresponding status message.
-    """
-    if not user_input or not isinstance(user_input, str):
-        return False, "Input error: Please provide a valid text query."
+def is_safe_input(query):
+    query_lower = query.lower()
+    if any(bad_word in query_lower for bad_word in UNSAFE_WORDS):
+        return False, "I cannot fulfill this request. Please maintain respectful and safe language."
+    return True, ""
+
+def handle_small_talk(query):
+    clean_q = re.sub(r'[^\w\s]', '', query.lower()).strip()
+    words = clean_q.split()
+    if not words: return None
+    # Check for prompt injections and jokes
+    if any(word in clean_q for word in OFF_TOPIC):
+        return "I am a strictly medical AI Assistant. I cannot tell jokes, write stories, or ignore my instructions."
+    # If the exact phrase or the first word is a greeting
+    if clean_q in GREETINGS or words[0] in GREETINGS:
+        return "Hello! I am your Medical AI Assistant. How can I help you today?"
         
-    text = user_input.strip().lower()
-    
-    if not text:
-        return False, "Input error: Query cannot be empty."
+    if any(w in GRATITUDE for w in words) and len(words) <= 5:
+        return "You're very welcome! Let me know if you need anything else."
         
-    # Detect anomalous input (e.g., uninterrupted character strings)
-    if len(text) > 15 and " " not in text:
-        return False, "Input error: Query format is unrecognizable. Please use standard phrasing."
+    return None
+
+def process_welcome(query):
+    is_safe, msg = is_safe_input(query)
+    if not is_safe:
+        return True, msg 
         
-    # Enforce domain-specific constraints
-    blocked_keywords = [
-        "poem", "recipe", "code", "weather", "joke", 
-        "story", "essay", "ignore all previous", "translate"
-    ]
-    
-    if any(word in text for word in blocked_keywords):
-        return False, "Out of scope: This system is strictly configured for medical data retrieval."
+    small_talk_reply = handle_small_talk(query)
+    if small_talk_reply:
+        return True, small_talk_reply 
         
-    return True, "Valid"
+    return False, None

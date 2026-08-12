@@ -2,6 +2,8 @@ import os
 
 # Ensure the pure-Python protobuf implementation is used before any imports that
 # may load compiled protobufs (fixes MessageFactory.GetPrototype errors).
+
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from core import (
